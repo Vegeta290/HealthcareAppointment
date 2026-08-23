@@ -1,0 +1,441 @@
+// Healthcare Appointment & Follow-up Manager — Prisma schema
+// See /PLAN.md for design rationale (concurrency strategy, open questions, RBAC notes).
+// This file is source code (per user request) — the earlier PLAN.md draft stays as the
+// design record; this is the buildable schema.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+enum Role {
+  PATIENT
+  DOCTOR
+  ADMIN
+}
+
+enum AppointmentStatus {
+  PENDING // created, awaiting confirmation
+  CONFIRMED // active, holds the slot
+  CANCELLED // slot freed
+  COMPLETED // visit happened
+  NO_SHOW // slot freed, tracked for record
+}
+
+enum SlotHoldStatus {
+  ACTIVE // currently blocking the slot
+  EXPIRED // TTL passed, never converted
+  CONVERTED // turned into a real Appointment
+  RELEASED // patient backed out / abandoned the flow
+}
+
+enum LeaveStatus {
+  ACTIVE
+  CANCELLED // admin/doctor reverted the leave
+}
+
+enum UrgencyLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum LlmJobStatus {
+  PENDING
+  COMPLETED
+  FAILED // LLM call failed/timed out; system must degrade gracefully (see VisitNote/SymptomAnalysis notes)
+}
+
+enum ReminderStatus {
+  PENDING
+  SENT
+  FAILED
+  CANCELLED // e.g. appointment cancelled before reminder fired
+}
+
+enum NotificationType {
+  BOOKING_CONFIRMATION
+  APPOINTMENT_REMINDER
+  CANCELLATION
+  LEAVE_CONFLICT
+  MEDICATION_REMINDER
+  RESCHEDULE
+}
+
+enum NotificationChannel {
+  EMAIL
+  // room to add SMS/PUSH later without touching existing rows
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  RETRYING
+}
+
+enum CalendarEventStatus {
+  PENDING
+  CREATED
+  UPDATED
+  DELETED
+  FAILED // Google Calendar API failure; must not block booking flow
+}
+
+// ============================================================================
+// Identity & RBAC
+// ============================================================================
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         Role
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  doctorProfile  DoctorProfile?
+  patientProfile PatientProfile?
+
+  googleCalendarCredential GoogleCalendarCredential?
+
+  @@index([role])
+}
+
+model DoctorProfile {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  specialisation      String
+  bio                 String?
+  slotDurationMinutes Int      @default(30)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  workingHours DoctorWorkingHours[]
+  leaves       DoctorLeave[]
+  appointments Appointment[]
+  slotHolds    SlotHold[]
+
+  @@index([specialisation])
+}
+
+// One row per weekday the doctor works, e.g. MON 09:00-17:00.
+// Kept separate from DoctorProfile so hours can vary per day.
+model DoctorWorkingHours {
+  id        String        @id @default(cuid())
+  doctorId  String
+  doctor    DoctorProfile @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  weekday   Int // 0 = Sunday .. 6 = Saturday
+  startTime String // "09:00" (local clinic time, stored as HH:mm)
+  endTime   String // "17:00"
+
+  @@unique([doctorId, weekday])
+}
+
+model PatientProfile {
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName    String
+  dateOfBirth DateTime?
+  phone       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  appointments Appointment[]
+  slotHolds    SlotHold[]
+}
+
+// ============================================================================
+// Booking core: SlotHold, Appointment, DoctorLeave (+ conflict audit)
+// See PLAN.md §1 for the two-layer double-booking guard rationale.
+// ============================================================================
+
+model SlotHold {
+  id        String         @id @default(cuid())
+  doctorId  String
+  doctor    DoctorProfile  @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  patientId String
+  patient   PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  slotStart DateTime // exact appointment start, UTC
+  slotEnd   DateTime // slotStart + doctor.slotDurationMinutes, denormalised for fast reads
+
+  status    SlotHoldStatus @default(ACTIVE)
+  expiresAt DateTime // slot selection time + 10 min TTL
+
+  convertedAppointmentId String?      @unique
+  convertedAppointment   Appointment? @relation(fields: [convertedAppointmentId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Only one ACTIVE hold per (doctorId, slotStart) is allowed. Prisma's DSL can't
+  // express a filtered/partial unique index, so this is added by raw SQL in a
+  // migration's `migration.sql`, appended right after `prisma migrate dev` generates
+  // the base table:
+  //
+  //   CREATE UNIQUE INDEX slothold_active_slot_uq
+  //     ON "SlotHold" ("doctorId", "slotStart")
+  //     WHERE "status" = 'ACTIVE';
+  //
+  // Without the WHERE clause, EXPIRED/RELEASED/CONVERTED holds would permanently
+  // block the slot from ever being reused, which is wrong.
+
+  @@index([doctorId, slotStart])
+  @@index([expiresAt]) // background sweeper: flips ACTIVE -> EXPIRED past expiresAt
+  @@index([patientId])
+}
+
+model Appointment {
+  id        String            @id @default(cuid())
+  doctorId  String
+  doctor    DoctorProfile     @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  patientId String
+  patient   PatientProfile    @relation(fields: [patientId], references: [id], onDelete: Restrict)
+
+  slotStart DateTime // exact start, UTC
+  slotEnd   DateTime // denormalised: slotStart + doctor.slotDurationMinutes at booking time
+  status    AppointmentStatus @default(PENDING)
+
+  // Pre-visit intake (raw patient input; LLM output lives in SymptomAnalysis)
+  symptomText        String?
+  symptomSubmittedAt DateTime?
+
+  // Cancellation / reschedule audit trail
+  cancelledAt         DateTime?
+  cancelledBy         String? // userId of the actor (patient, doctor, or admin via leave conflict)
+  cancellationReason  String?
+  rescheduledFromId   String?      @unique
+  rescheduledFrom     Appointment? @relation("Reschedule", fields: [rescheduledFromId], references: [id])
+  rescheduledTo       Appointment? @relation("Reschedule")
+
+  originatingHold SlotHold?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Downstream 1:1 / 1:many records
+  symptomAnalysis   SymptomAnalysis?
+  visitNote         VisitNote?
+  prescriptions     Prescription[]
+  notifications     NotificationLog[]
+  calendarEvents    CalendarEvent[]
+  leaveConflicts    AppointmentLeaveConflict[]
+
+  // Only one live (non-cancelled) appointment per (doctorId, slotStart). Same
+  // partial-index caveat as SlotHold above — added via raw SQL after the base
+  // migration:
+  //
+  //   CREATE UNIQUE INDEX appointment_live_slot_uq
+  //     ON "Appointment" ("doctorId", "slotStart")
+  //     WHERE "status" IN ('PENDING', 'CONFIRMED');
+  //
+  // This is the hard guarantee: even if the SlotHold layer is bypassed or has a
+  // bug, Postgres itself refuses a second live appointment for the same slot.
+  // Application code must catch the resulting unique-violation (Prisma P2002 /
+  // Postgres 23505) inside the booking transaction and return a clean
+  // "slot no longer available" response instead of a 500.
+
+  @@index([doctorId, slotStart])
+  @@index([patientId, slotStart])
+  @@index([status])
+}
+
+model DoctorLeave {
+  id          String        @id @default(cuid())
+  doctorId    String
+  doctor      DoctorProfile @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  startDate   DateTime // inclusive, date-only (00:00 UTC)
+  endDate     DateTime // inclusive, date-only
+  reason      String?
+  status      LeaveStatus   @default(ACTIVE)
+  createdById String // userId of admin or doctor who filed it
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Appointments displaced by this leave, populated by app logic when a leave is
+  // filed over a date range with existing CONFIRMED/PENDING appointments. Drives
+  // the patient-notification job and its retry/audit trail.
+  displacedAppointments AppointmentLeaveConflict[]
+
+  @@index([doctorId, startDate, endDate])
+  @@index([status])
+}
+
+// Join/audit table: which appointments were caught by which leave, and whether
+// the patient notification succeeded. Kept separate from Appointment so leave
+// conflicts don't add leave-specific columns to the hot Appointment table.
+model AppointmentLeaveConflict {
+  id                   String      @id @default(cuid())
+  leaveId              String
+  leave                DoctorLeave @relation(fields: [leaveId], references: [id], onDelete: Cascade)
+  appointmentId        String
+  appointment          Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  notifiedAt           DateTime?
+  notificationFailedAt DateTime?
+  notificationAttempts Int         @default(0)
+  createdAt            DateTime    @default(now())
+
+  @@unique([leaveId, appointmentId])
+}
+
+// ============================================================================
+// LLM-generated content: SymptomAnalysis (pre-visit), VisitNote (post-visit)
+// Both carry an explicit job-status + error field so an LLM failure degrades
+// gracefully (booking/visit flow must not break — see requirements doc).
+// ============================================================================
+
+model SymptomAnalysis {
+  id            String       @id @default(cuid())
+  appointmentId String       @unique
+  appointment   Appointment  @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  status        LlmJobStatus @default(PENDING)
+  urgencyLevel  UrgencyLevel?
+  chiefComplaint       String?
+  suggestedQuestions   String[] // three suggested questions for the doctor
+  rawModelResponse     Json? // full LLM response, kept for audit/debugging
+  model                String? // model id used, e.g. "claude-sonnet-5"
+  promptVersion        String? // tag for the prompt template version, for reproducibility
+  errorMessage         String? // set when status = FAILED; UI falls back to raw symptomText
+  attempts             Int          @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
+model VisitNote {
+  id            String      @id @default(cuid())
+  appointmentId String      @unique
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  // Doctor's raw clinical input
+  clinicalNotes String
+  submittedAt   DateTime    @default(now())
+
+  // LLM-generated patient-friendly output
+  status               LlmJobStatus @default(PENDING)
+  patientSummary       String? // patient-friendly rewrite of clinicalNotes
+  followUpSteps        String?
+  rawModelResponse     Json?
+  model                String?
+  promptVersion        String?
+  errorMessage         String? // set when status = FAILED; patient sees raw clinicalNotes fallback (or a "summary pending" state), never a broken page
+  attempts             Int          @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
+// One row per medication in the prescription. Doctor enters these structured
+// (not free text) so MedicationReminder can compute a schedule from `frequency`.
+model Prescription {
+  id             String      @id @default(cuid())
+  appointmentId  String
+  appointment    Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  medicationName String
+  dosage         String // e.g. "500mg"
+  frequency      String // e.g. "TWICE_DAILY", "EVERY_8_HOURS" — app-level enum/free text, kept as string for flexibility across dosing patterns
+  durationDays   Int?
+  instructions   String? // e.g. "after food"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reminders MedicationReminder[]
+
+  @@index([appointmentId])
+}
+
+model MedicationReminder {
+  id             String         @id @default(cuid())
+  prescriptionId String
+  prescription   Prescription   @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+
+  scheduledAt DateTime // computed from Prescription.frequency + durationDays at creation time
+  status      ReminderStatus @default(PENDING)
+  sentAt      DateTime?
+  attempts    Int            @default(0)
+  lastError   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, scheduledAt]) // background job polls PENDING rows due at/before now
+  @@index([prescriptionId])
+}
+
+// ============================================================================
+// Notification & calendar sync
+// ============================================================================
+
+model NotificationLog {
+  id              String              @id @default(cuid())
+  appointmentId   String?
+  appointment     Appointment?        @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  recipientUserId String // patient or doctor userId; not FK'd to allow retaining log after account changes
+  type            NotificationType
+  channel         NotificationChannel @default(EMAIL)
+  status          NotificationStatus  @default(PENDING)
+  attempts        Int                 @default(0)
+  lastError       String?
+  sentAt          DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, type]) // background retry job polls PENDING/RETRYING rows
+  @@index([appointmentId])
+  @@index([recipientUserId])
+}
+
+model CalendarEvent {
+  id            String              @id @default(cuid())
+  appointmentId String
+  appointment   Appointment         @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  ownerUserId   String // patient or doctor — one event row per party, per appointment
+  googleEventId String? // null until first successful create
+  calendarId    String? // target Google calendar id for this owner
+  status        CalendarEventStatus @default(PENDING)
+  lastError     String?
+  lastSyncedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // One calendar-event record per (appointment, owner) — update/delete on
+  // reschedule or cancellation targets this row rather than creating a new one.
+  @@unique([appointmentId, ownerUserId])
+  @@index([status])
+}
+
+// One row per User who has connected their Google account via OAuth 2.0. Access
+// token is refreshed automatically by the googleapis client (see
+// lib/calendar/google.ts) and the rotated token is persisted back here.
+model GoogleCalendarCredential {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken  String
+  refreshToken String
+  expiryDate   DateTime
+  calendarId   String   @default("primary")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
