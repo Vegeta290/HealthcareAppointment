@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { getDoctorDisplayName } from "@/lib/doctors";
 import { PageHeader, EmptyState } from "@/components/ui/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { CreateDoctorForm } from "@/components/admin/CreateDoctorForm";
+import { EditDoctorNameForm } from "@/components/admin/EditDoctorNameForm";
 
 export default async function AdminDoctorsPage() {
   const doctors = await prisma.doctorProfile.findMany({
@@ -31,11 +33,16 @@ export default async function AdminDoctorsPage() {
             <Card key={doctor.id}>
               <CardBody className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-medium text-slate-900">Dr. {doctor.user.email}</p>
+                  <p className="text-sm font-medium text-slate-900">
+                    Dr. {getDoctorDisplayName(doctor)}
+                  </p>
                   <p className="text-sm text-slate-500">
                     {doctor.specialisation} · {doctor.slotDurationMinutes}-minute slots ·{" "}
                     {doctor.workingHours.length} working day(s)/week
                   </p>
+                  <div className="mt-1">
+                    <EditDoctorNameForm doctorId={doctor.id} currentName={doctor.fullName} />
+                  </div>
                 </div>
                 <Link
                   href={`/admin/doctors/${doctor.id}/leave`}

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Role } from "@prisma/client";
 import { requireServerSession } from "@/lib/serverSession";
 import { prisma } from "@/lib/prisma";
+import { getDoctorDisplayName } from "@/lib/doctors";
 import { PageHeader, EmptyState } from "@/components/ui/PageHeader";
 import { Card, CardBody } from "@/components/ui/Card";
 import { AppointmentStatusBadge } from "@/components/ui/Badge";
@@ -54,7 +55,7 @@ export default async function PatientDashboardPage() {
                 <CardBody className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="text-sm font-medium text-slate-900">
-                      Dr. {appt.doctor.user.email} — {appt.doctor.specialisation}
+                      Dr. {getDoctorDisplayName(appt.doctor)} — {appt.doctor.specialisation}
                     </p>
                     <p className="text-sm text-slate-500">{formatSlot(appt.slotStart, appt.slotEnd)}</p>
                   </div>

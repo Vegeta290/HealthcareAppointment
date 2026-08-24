@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getDoctorDisplayName } from "@/lib/doctors";
 import { PageHeader, EmptyState } from "@/components/ui/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { LeaveForm } from "@/components/admin/LeaveForm";
@@ -22,7 +23,7 @@ export default async function DoctorLeavePage({ params }: { params: { doctorId: 
 
   return (
     <div className="space-y-6">
-      <PageHeader title={`Leave — Dr. ${doctor.user.email}`} description={doctor.specialisation} />
+      <PageHeader title={`Leave — Dr. ${getDoctorDisplayName(doctor)}`} description={doctor.specialisation} />
 
       <Card>
         <CardHeader>

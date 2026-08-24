@@ -18,6 +18,7 @@ const WEEKDAYS = [
 
 export function CreateDoctorForm() {
   const router = useRouter();
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [specialisation, setSpecialisation] = useState("");
@@ -42,6 +43,7 @@ export function CreateDoctorForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          fullName,
           email,
           password,
           specialisation,
@@ -53,6 +55,7 @@ export function CreateDoctorForm() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to create doctor");
 
+      setFullName("");
       setEmail("");
       setPassword("");
       setSpecialisation("");
@@ -69,6 +72,15 @@ export function CreateDoctorForm() {
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && <Alert>{error}</Alert>}
       <div className="grid gap-4 sm:grid-cols-2">
+        <FormField label="Full name" htmlFor="doctorFullName">
+          <Input
+            id="doctorFullName"
+            required
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            placeholder="Priya Sharma"
+          />
+        </FormField>
         <FormField label="Email" htmlFor="doctorEmail">
           <Input
             id="doctorEmail"

@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
 }
 
 interface CreateDoctorBody {
+  fullName?: string;
   email?: string;
   password?: string;
   specialisation?: string;
@@ -47,10 +48,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { email, password, specialisation } = body;
-  if (!email || !password || !specialisation) {
+  const { fullName, email, password, specialisation } = body;
+  if (!fullName || !email || !password || !specialisation) {
     return NextResponse.json(
-      { error: "email, password, and specialisation are required" },
+      { error: "fullName, email, password, and specialisation are required" },
       { status: 400 }
     );
   }
@@ -83,6 +84,7 @@ export async function POST(request: NextRequest) {
       role: Role.DOCTOR,
       doctorProfile: {
         create: {
+          fullName: fullName.trim(),
           specialisation,
           bio: body.bio,
           slotDurationMinutes: body.slotDurationMinutes ?? 30,

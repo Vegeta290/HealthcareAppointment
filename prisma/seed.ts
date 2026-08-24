@@ -22,6 +22,7 @@ const MON_TO_FRI_9_TO_5 = [1, 2, 3, 4, 5].map((weekday) => ({
 }));
 
 interface SeedDoctor {
+  fullName: string;
   email: string;
   specialisation: string;
   bio: string;
@@ -30,18 +31,21 @@ interface SeedDoctor {
 
 const SEED_DOCTORS: SeedDoctor[] = [
   {
+    fullName: "Elena Vasquez",
     email: "cardiology@clinic.test",
     specialisation: "Cardiology",
     bio: "Seed doctor for local testing — Cardiology.",
     slotDurationMinutes: 30,
   },
   {
+    fullName: "Marcus Chen",
     email: "generalpractice@clinic.test",
     specialisation: "General Practice",
     bio: "Seed doctor for local testing — General Practice.",
     slotDurationMinutes: 20,
   },
   {
+    fullName: "Priya Sharma",
     email: "dermatology@clinic.test",
     specialisation: "Dermatology",
     bio: "Seed doctor for local testing — Dermatology.",
@@ -64,21 +68,22 @@ async function main() {
 
   const doctors = [];
   for (const doctor of SEED_DOCTORS) {
-    // Working hours are tied 1:1 to the profile via onDelete: Cascade, so a
-    // plain upsert on User (which nests DoctorProfile/DoctorWorkingHours
-    // create-only) is fine for a script that's meant to run once against a
-    // fresh database — re-running against an already-seeded database updates
-    // nothing for an existing doctor rather than erroring, since `update: {}`
-    // is a no-op on the User row itself.
+    // Working hours are create-only (tied 1:1 to the profile via onDelete:
+    // Cascade), so a re-run against an already-seeded database won't touch
+    // them for an existing doctor. fullName IS backfilled on re-run though —
+    // useful for the 3 doctors seeded before that field existed.
     const doctorUser = await prisma.user.upsert({
       where: { email: doctor.email },
-      update: {},
+      update: {
+        doctorProfile: { update: { fullName: doctor.fullName } },
+      },
       create: {
         email: doctor.email,
         passwordHash,
         role: Role.DOCTOR,
         doctorProfile: {
           create: {
+            fullName: doctor.fullName,
             specialisation: doctor.specialisation,
             bio: doctor.bio,
             slotDurationMinutes: doctor.slotDurationMinutes,

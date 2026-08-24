@@ -4,6 +4,7 @@ import { getRedisConnection } from "../lib/queue/connection";
 import { QUEUE_NAMES } from "../lib/queue/queues";
 import type { CalendarSyncJobData } from "../lib/queue/types";
 import { prisma } from "../lib/prisma";
+import { getDoctorDisplayName } from "../lib/doctors";
 import {
   CalendarEventInput,
   createGoogleCalendarEvent,
@@ -29,7 +30,7 @@ async function processCalendarSyncJob(job: Job<CalendarSyncJobData>): Promise<vo
   const isPatientOwner = appointment.patient.user.id === event.ownerUserId;
   const input: CalendarEventInput = {
     summary: isPatientOwner
-      ? `Appointment with Dr. ${appointment.doctor.user.email}`
+      ? `Appointment with Dr. ${getDoctorDisplayName(appointment.doctor)}`
       : `Appointment with patient ${appointment.patient.fullName}`,
     description: appointment.symptomText ?? undefined,
     start: appointment.slotStart,

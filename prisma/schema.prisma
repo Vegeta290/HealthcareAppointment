@@ -116,6 +116,11 @@ model DoctorProfile {
   id                  String   @id @default(cuid())
   userId              String   @unique
   user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Nullable rather than required: existing doctors created before this field
+  // existed have no value here yet. Display code falls back to user.email
+  // when null (see e.g. lib/email/templates.ts, workers/notificationWorker.ts).
+  // New doctors created via POST /api/doctors are required to supply one.
+  fullName            String?
   specialisation      String
   bio                 String?
   slotDurationMinutes Int      @default(30)

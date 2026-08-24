@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Role } from "@prisma/client";
 import { requireServerSession } from "@/lib/serverSession";
 import { prisma } from "@/lib/prisma";
+import { getDoctorDisplayName } from "@/lib/doctors";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { AppointmentStatusBadge } from "@/components/ui/Badge";
@@ -37,7 +38,7 @@ export default async function PatientAppointmentDetailPage({ params }: { params:
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Appointment with Dr. ${appointment.doctor.user.email}`}
+        title={`Appointment with Dr. ${getDoctorDisplayName(appointment.doctor)}`}
         description={formatSlot(appointment.slotStart, appointment.slotEnd)}
         actions={<AppointmentStatusBadge status={appointment.status} />}
       />

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { getDoctorDisplayName } from "@/lib/doctors";
 import { PageHeader, EmptyState } from "@/components/ui/PageHeader";
 import { Card, CardBody } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -38,7 +39,7 @@ export default async function DoctorSearchPage({
             <Card key={doctor.id}>
               <CardBody className="flex flex-col gap-3">
                 <div>
-                  <p className="text-sm font-medium text-slate-900">Dr. {doctor.user.email}</p>
+                  <p className="text-sm font-medium text-slate-900">Dr. {getDoctorDisplayName(doctor)}</p>
                   <p className="text-sm text-slate-500">{doctor.specialisation}</p>
                   {doctor.bio && <p className="mt-1 text-sm text-slate-500">{doctor.bio}</p>}
                 </div>

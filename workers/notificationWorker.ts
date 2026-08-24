@@ -4,6 +4,7 @@ import { getRedisConnection } from "../lib/queue/connection";
 import { QUEUE_NAMES, getNotificationQueue } from "../lib/queue/queues";
 import type { NotificationJobData } from "../lib/queue/types";
 import { prisma } from "../lib/prisma";
+import { getDoctorDisplayName } from "../lib/doctors";
 import { sendEmail } from "../lib/email/mailer";
 import {
   buildAppointmentReminderEmail,
@@ -43,12 +44,9 @@ async function buildEmailForLog(
 
   const isPatientRecipient = appointment.patient.user.id === recipientUserId;
   const recipientRole: "PATIENT" | "DOCTOR" = isPatientRecipient ? "PATIENT" : "DOCTOR";
-  // The schema has no doctor display-name field (DoctorProfile only carries
-  // specialisation/bio, User only carries email) — the account email is the
-  // best identifier available until a "name" field is added.
   const ctx = {
     patientName: appointment.patient.fullName,
-    doctorName: appointment.doctor.user.email,
+    doctorName: getDoctorDisplayName(appointment.doctor),
     specialisation: appointment.doctor.specialisation,
     slotStart: appointment.slotStart,
     slotEnd: appointment.slotEnd,
