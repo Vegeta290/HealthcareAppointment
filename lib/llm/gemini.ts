@@ -2,7 +2,13 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { LlmJobStatus, UrgencyLevel } from "@prisma/client";
 import { prisma } from "../prisma";
 
-const MODEL_NAME = "gemini-1.5-flash";
+// "gemini-1.5-flash" was retired (404). The "-latest" alias resolved but
+// returned persistent 503s under load during testing. Google's own 404
+// message for the next-oldest model ("gemini-2.5-flash") pointed explicitly
+// at this one, and it responds successfully — pin to it rather than an alias.
+// Revisit if Google deprecates this in turn (check via the ListModels API:
+// https://generativelanguage.googleapis.com/v1beta/models?key=<GEMINI_API_KEY>).
+const MODEL_NAME = "gemini-3.6-flash";
 const PRE_VISIT_PROMPT_VERSION = "pre-visit-v1";
 const POST_VISIT_PROMPT_VERSION = "post-visit-v1";
 
