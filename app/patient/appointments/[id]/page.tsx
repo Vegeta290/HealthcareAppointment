@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Role } from "@prisma/client";
 import { requireServerSession } from "@/lib/serverSession";
@@ -6,6 +7,7 @@ import { getDoctorDisplayName } from "@/lib/doctors";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { AppointmentStatusBadge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 
 function formatSlot(start: Date, end: Date): string {
   return `${start.toLocaleString("en-US", { dateStyle: "full", timeStyle: "short", timeZone: "UTC" })} – ${end.toLocaleString(
@@ -40,7 +42,16 @@ export default async function PatientAppointmentDetailPage({ params }: { params:
       <PageHeader
         title={`Appointment with Dr. ${getDoctorDisplayName(appointment.doctor)}`}
         description={formatSlot(appointment.slotStart, appointment.slotEnd)}
-        actions={<AppointmentStatusBadge status={appointment.status} />}
+        actions={
+          <div className="flex items-center gap-3">
+            {(appointment.status === "PENDING" || appointment.status === "CONFIRMED") && (
+              <Link href={`/patient/appointments/${appointment.id}/reschedule`}>
+                <Button variant="secondary">Reschedule</Button>
+              </Link>
+            )}
+            <AppointmentStatusBadge status={appointment.status} />
+          </div>
+        }
       />
 
       {appointment.status === "CANCELLED" && appointment.cancellationReason && (

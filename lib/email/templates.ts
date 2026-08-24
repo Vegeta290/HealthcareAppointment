@@ -79,6 +79,22 @@ export function buildAppointmentReminderEmail(
   };
 }
 
+export function buildRescheduleEmail(
+  ctx: AppointmentEmailContext,
+  recipient: "PATIENT" | "DOCTOR"
+): EmailContent {
+  const when = formatSlot(ctx.slotStart, ctx.slotEnd);
+  const text =
+    recipient === "PATIENT"
+      ? `Your appointment with Dr. ${ctx.doctorName} has been rescheduled to ${when}.`
+      : `Your appointment with patient ${ctx.patientName} has been rescheduled to ${when}.`;
+  return {
+    subject: "Appointment rescheduled",
+    text,
+    html: wrapHtml([text]),
+  };
+}
+
 export function buildLeaveConflictEmail(
   ctx: AppointmentEmailContext & { leaveReason?: string | null }
 ): EmailContent {

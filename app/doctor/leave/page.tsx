@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
+import { Role } from "@prisma/client";
+import { requireServerSession } from "@/lib/serverSession";
 import { prisma } from "@/lib/prisma";
-import { getDoctorDisplayName } from "@/lib/doctors";
 import { PageHeader, EmptyState } from "@/components/ui/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { LeaveForm } from "@/components/shared/LeaveForm";
@@ -9,10 +10,17 @@ function formatDate(d: Date): string {
   return d.toLocaleDateString("en-US", { dateStyle: "medium", timeZone: "UTC" });
 }
 
-export default async function DoctorLeavePage({ params }: { params: { doctorId: string } }) {
+// Doctor-facing equivalent of app/admin/doctors/[doctorId]/leave/page.tsx —
+// same LeaveForm component, but scoped to the signed-in doctor's own profile
+// rather than taking a doctorId from the URL. POST /api/doctor-leave already
+// enforces that a DOCTOR caller can only file leave for themselves (see
+// app/api/doctor-leave/route.ts), so this page just needs to find that
+// doctor's own id and hand it to the same form.
+export default async function DoctorLeavePage() {
+  const session = requireServerSession([Role.DOCTOR]);
+
   const doctor = await prisma.doctorProfile.findUnique({
-    where: { id: params.doctorId },
-    include: { user: { select: { email: true } } },
+    where: { userId: session.sub },
   });
   if (!doctor) notFound();
 
@@ -23,7 +31,7 @@ export default async function DoctorLeavePage({ params }: { params: { doctorId: 
 
   return (
     <div className="space-y-6">
-      <PageHeader title={`Leave — Dr. ${getDoctorDisplayName(doctor)}`} description={doctor.specialisation} />
+      <PageHeader title="My leave" description="Time off — existing bookings in the range are cancelled automatically." />
 
       <Card>
         <CardHeader>
@@ -35,7 +43,7 @@ export default async function DoctorLeavePage({ params }: { params: { doctorId: 
       </Card>
 
       {leaves.length === 0 ? (
-        <EmptyState title="No leave on file" description="This doctor has no upcoming leave." />
+        <EmptyState title="No leave on file" description="You have no upcoming leave." />
       ) : (
         <div className="space-y-2">
           {leaves.map((leave) => (

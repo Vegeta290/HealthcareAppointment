@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 
 const NAV_LINKS = [
   { href: "/doctor/schedule", label: "Today's schedule" },
+  { href: "/doctor/leave", label: "My leave" },
   { href: "/settings/calendar", label: "Calendar sync" },
 ];
 

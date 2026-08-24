@@ -11,6 +11,7 @@ import {
   buildBookingConfirmationEmail,
   buildCancellationEmail,
   buildLeaveConflictEmail,
+  buildRescheduleEmail,
   EmailContent,
 } from "../lib/email/templates";
 
@@ -61,8 +62,9 @@ async function buildEmailForLog(
         to: recipient.email,
       };
     case NotificationType.APPOINTMENT_REMINDER:
-    case NotificationType.RESCHEDULE:
       return { content: buildAppointmentReminderEmail(ctx, recipientRole), to: recipient.email };
+    case NotificationType.RESCHEDULE:
+      return { content: buildRescheduleEmail(ctx, recipientRole), to: recipient.email };
     case NotificationType.LEAVE_CONFLICT:
       return {
         content: buildLeaveConflictEmail({ ...ctx, leaveReason: appointment.cancellationReason }),
