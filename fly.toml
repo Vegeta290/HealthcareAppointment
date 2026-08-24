@@ -1,0 +1,27 @@
+# Deploys ONLY the background worker process — see Dockerfile.workers.
+# The Next.js app deploys separately to Vercel; this is not that.
+#
+# Setup (one time):
+#   flyctl launch --no-deploy --dockerfile Dockerfile.workers --name <your-app>-workers
+#   (say no to a Postgres/Redis db when asked — you're already using Supabase/Upstash)
+#   flyctl secrets set DATABASE_URL=... DIRECT_URL=... REDIS_URL=... GEMINI_API_KEY=... \
+#     SMTP_HOST=... SMTP_PORT=... SMTP_USER=... SMTP_PASSWORD=... SMTP_FROM=... \
+#     GOOGLE_CLIENT_ID=... GOOGLE_CLIENT_SECRET=... GOOGLE_REDIRECT_URI=... \
+#     APP_BASE_URL=... JWT_SECRET=...
+#   flyctl deploy
+#
+# Redeploy after any code change: flyctl deploy
+
+app = "healthcare-appointment-workers"
+primary_region = "iad" # pick the region closest to your Supabase/Upstash instances
+
+[build]
+  dockerfile = "Dockerfile.workers"
+
+# No [[services]] / [http_service] block — this process doesn't listen on a
+# port or serve HTTP, it just connects out to Redis/Postgres, so it isn't a
+# web service and shouldn't be treated like one (no health-check pings needed).
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

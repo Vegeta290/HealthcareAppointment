@@ -1,0 +1,26 @@
+# Builds and runs ONLY the background worker process (workers/index.ts) —
+# the Next.js app itself deploys separately to Vercel and is not built here.
+# Portable across any Docker host (Fly.io, Railway, Render, a plain VPS):
+# whatever's hosting this just needs to run the image with the same env vars
+# as the Vercel deployment (DATABASE_URL, REDIS_URL, GEMINI_API_KEY, etc. —
+# see .env.example).
+
+FROM node:20-slim
+
+# Prisma's query engine needs OpenSSL to be present to detect the right
+# binary target; node:20-slim doesn't ship it, and without this Prisma falls
+# back to a guess (openssl-1.1.x) that can silently mismatch the base image's
+# actual OpenSSL 3.x at runtime.
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY . .
+
+# Doesn't need a live DATABASE_URL — only reads prisma/schema.prisma.
+RUN npx prisma generate
+
+CMD ["npm", "run", "workers"]

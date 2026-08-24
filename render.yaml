@@ -1,0 +1,55 @@
+# Render "Blueprint" — deploys the background worker process as a FREE Web
+# Service (Render's persistent "Background Worker" service type requires a
+# paid plan; their free tier only exists for Web Services). This works
+# around that: workers/keepAliveServer.ts makes the process also respond to
+# an HTTP health check, so Render treats it as a normal free web service.
+#
+# The free tier sleeps after 15 minutes with no HTTP traffic and wakes on the
+# next request — since nothing naturally sends this process HTTP traffic, you
+# MUST also set up a free external pinger (see README) hitting this service's
+# URL every ~10 minutes, or the workers stop running until the next ping
+# wakes it back up.
+#
+# Setup: Render dashboard → New → Blueprint → point at this GitHub repo → it
+# reads this file automatically. You'll be prompted to fill in each env var
+# below (values come from .env.example — same ones already set on Vercel).
+#
+# This only deploys the worker. The Next.js app deploys separately to Vercel.
+
+services:
+  - type: web
+    name: healthcare-appointment-workers
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npx prisma generate
+    startCommand: npm run workers
+    healthCheckPath: /
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
+      - key: APP_BASE_URL
+        sync: false

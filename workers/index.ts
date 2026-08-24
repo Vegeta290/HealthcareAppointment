@@ -9,8 +9,11 @@ import { startCalendarSyncWorker } from "./calendarSyncWorker";
 import { startLeaveConflictWorker } from "./leaveConflictWorker";
 import { startLlmWorker } from "./llmWorker";
 import { startMedicationReminderWorker } from "./medicationReminderWorker";
+import { startKeepAliveServer } from "./keepAliveServer";
 
 async function main() {
+  startKeepAliveServer();
+
   const workers = [
     startNotificationWorker(),
     startNotificationSweepWorker(),
