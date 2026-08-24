@@ -2,18 +2,12 @@ import { notFound } from "next/navigation";
 import { Role } from "@prisma/client";
 import { requireServerSession } from "@/lib/serverSession";
 import { prisma } from "@/lib/prisma";
+import { formatFullSlotRange } from "@/lib/dateTime";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { AppointmentStatusBadge, UrgencyBadge } from "@/components/ui/Badge";
 import { VisitNoteForm } from "@/components/doctor/VisitNoteForm";
 import { GenerateSummaryButton } from "@/components/doctor/GenerateSummaryButton";
-
-function formatSlot(start: Date, end: Date): string {
-  return `${start.toLocaleString("en-US", { dateStyle: "full", timeStyle: "short", timeZone: "UTC" })} – ${end.toLocaleString(
-    "en-US",
-    { timeStyle: "short", timeZone: "UTC" }
-  )} UTC`;
-}
 
 export default async function DoctorAppointmentDetailPage({ params }: { params: { id: string } }) {
   const session = requireServerSession([Role.DOCTOR]);
@@ -41,7 +35,7 @@ export default async function DoctorAppointmentDetailPage({ params }: { params: 
     <div className="space-y-6">
       <PageHeader
         title={appointment.patient.fullName}
-        description={formatSlot(appointment.slotStart, appointment.slotEnd)}
+        description={formatFullSlotRange(appointment.slotStart, appointment.slotEnd)}
         actions={<AppointmentStatusBadge status={appointment.status} />}
       />
 

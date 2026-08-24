@@ -2,13 +2,10 @@ import { notFound } from "next/navigation";
 import { Role } from "@prisma/client";
 import { requireServerSession } from "@/lib/serverSession";
 import { prisma } from "@/lib/prisma";
+import { formatDateOnly } from "@/lib/dateTime";
 import { PageHeader, EmptyState } from "@/components/ui/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { LeaveForm } from "@/components/shared/LeaveForm";
-
-function formatDate(d: Date): string {
-  return d.toLocaleDateString("en-US", { dateStyle: "medium", timeZone: "UTC" });
-}
 
 // Doctor-facing equivalent of app/admin/doctors/[doctorId]/leave/page.tsx —
 // same LeaveForm component, but scoped to the signed-in doctor's own profile
@@ -50,7 +47,7 @@ export default async function DoctorLeavePage() {
             <Card key={leave.id}>
               <CardBody>
                 <p className="text-sm font-medium text-slate-900">
-                  {formatDate(leave.startDate)} – {formatDate(leave.endDate)}
+                  {formatDateOnly(leave.startDate)} – {formatDateOnly(leave.endDate)}
                 </p>
                 {leave.reason && <p className="text-sm text-slate-500">{leave.reason}</p>}
               </CardBody>

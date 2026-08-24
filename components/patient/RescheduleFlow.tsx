@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
 import { Alert } from "@/components/ui/PageHeader";
 import { Card, CardBody } from "@/components/ui/Card";
+import { formatSlotButtonLabel } from "@/lib/dateTime";
 
 type Step = "pick-slot" | "confirm";
 
@@ -93,15 +94,6 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-function formatSlotLabel(iso: string): string {
-  return new Date(iso).toLocaleString("en-US", {
-    weekday: "short",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "UTC",
-  });
-}
-
 export function RescheduleFlow({ appointmentId, doctorId }: { appointmentId: string; doctorId: string }) {
   const router = useRouter();
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -180,7 +172,7 @@ export function RescheduleFlow({ appointmentId, doctorId }: { appointmentId: str
         <CardBody className="space-y-4">
           <div>
             <p className="text-sm font-medium text-slate-900">
-              New slot: {state.selectedSlot && formatSlotLabel(state.selectedSlot)}
+              New slot: {state.selectedSlot && formatSlotButtonLabel(state.selectedSlot)}
             </p>
             <p className="text-xs text-slate-500">
               Held until {state.holdExpiresAt && new Date(state.holdExpiresAt).toLocaleTimeString()} — confirm
@@ -230,7 +222,7 @@ export function RescheduleFlow({ appointmentId, doctorId }: { appointmentId: str
                 disabled={state.submitting}
                 onClick={() => handleSelectSlot(slot)}
               >
-                {formatSlotLabel(slot)}
+                {formatSlotButtonLabel(slot)}
               </Button>
             ))}
           </div>

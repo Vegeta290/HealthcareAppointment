@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { FormField, Input, Textarea } from "@/components/ui/Field";
 import { Alert } from "@/components/ui/PageHeader";
 import { Card, CardBody } from "@/components/ui/Card";
+import { formatSlotButtonLabel } from "@/lib/dateTime";
 
 type Step = "pick-slot" | "symptoms" | "confirmed";
 
@@ -101,15 +102,6 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-function formatSlotLabel(iso: string): string {
-  return new Date(iso).toLocaleString("en-US", {
-    weekday: "short",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "UTC",
-  });
-}
-
 export function BookingFlow({ doctorId }: { doctorId: string }) {
   const router = useRouter();
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -191,7 +183,7 @@ export function BookingFlow({ doctorId }: { doctorId: string }) {
         <CardBody className="space-y-4 text-center">
           <p className="text-lg font-medium text-slate-900">Appointment confirmed!</p>
           <p className="text-sm text-slate-500">
-            {state.selectedSlot && formatSlotLabel(state.selectedSlot)} — a confirmation email is on its way.
+            {state.selectedSlot && formatSlotButtonLabel(state.selectedSlot)} — a confirmation email is on its way.
           </p>
           <Button onClick={() => router.push("/patient/dashboard")}>Go to my appointments</Button>
         </CardBody>
@@ -205,7 +197,7 @@ export function BookingFlow({ doctorId }: { doctorId: string }) {
         <CardBody className="space-y-4">
           <div>
             <p className="text-sm font-medium text-slate-900">
-              Slot held: {state.selectedSlot && formatSlotLabel(state.selectedSlot)}
+              Slot held: {state.selectedSlot && formatSlotButtonLabel(state.selectedSlot)}
             </p>
             <p className="text-xs text-slate-500">
               Held until {state.holdExpiresAt && new Date(state.holdExpiresAt).toLocaleTimeString()} — confirm
@@ -267,7 +259,7 @@ export function BookingFlow({ doctorId }: { doctorId: string }) {
                 disabled={state.submitting}
                 onClick={() => handleSelectSlot(slot)}
               >
-                {formatSlotLabel(slot)}
+                {formatSlotButtonLabel(slot)}
               </Button>
             ))}
           </div>

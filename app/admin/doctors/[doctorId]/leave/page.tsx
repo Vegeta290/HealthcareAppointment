@@ -1,13 +1,10 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getDoctorDisplayName } from "@/lib/doctors";
+import { formatDateOnly } from "@/lib/dateTime";
 import { PageHeader, EmptyState } from "@/components/ui/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { LeaveForm } from "@/components/shared/LeaveForm";
-
-function formatDate(d: Date): string {
-  return d.toLocaleDateString("en-US", { dateStyle: "medium", timeZone: "UTC" });
-}
 
 export default async function DoctorLeavePage({ params }: { params: { doctorId: string } }) {
   const doctor = await prisma.doctorProfile.findUnique({
@@ -42,7 +39,7 @@ export default async function DoctorLeavePage({ params }: { params: { doctorId: 
             <Card key={leave.id}>
               <CardBody>
                 <p className="text-sm font-medium text-slate-900">
-                  {formatDate(leave.startDate)} – {formatDate(leave.endDate)}
+                  {formatDateOnly(leave.startDate)} – {formatDateOnly(leave.endDate)}
                 </p>
                 {leave.reason && <p className="text-sm text-slate-500">{leave.reason}</p>}
               </CardBody>

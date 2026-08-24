@@ -4,17 +4,11 @@ import { Role } from "@prisma/client";
 import { requireServerSession } from "@/lib/serverSession";
 import { prisma } from "@/lib/prisma";
 import { getDoctorDisplayName } from "@/lib/doctors";
+import { formatFullSlotRange } from "@/lib/dateTime";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { AppointmentStatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-
-function formatSlot(start: Date, end: Date): string {
-  return `${start.toLocaleString("en-US", { dateStyle: "full", timeStyle: "short", timeZone: "UTC" })} – ${end.toLocaleString(
-    "en-US",
-    { timeStyle: "short", timeZone: "UTC" }
-  )} UTC`;
-}
 
 export default async function PatientAppointmentDetailPage({ params }: { params: { id: string } }) {
   const session = requireServerSession([Role.PATIENT]);
@@ -41,7 +35,7 @@ export default async function PatientAppointmentDetailPage({ params }: { params:
     <div className="space-y-6">
       <PageHeader
         title={`Appointment with Dr. ${getDoctorDisplayName(appointment.doctor)}`}
-        description={formatSlot(appointment.slotStart, appointment.slotEnd)}
+        description={formatFullSlotRange(appointment.slotStart, appointment.slotEnd)}
         actions={
           <div className="flex items-center gap-3">
             {(appointment.status === "PENDING" || appointment.status === "CONFIRMED") && (

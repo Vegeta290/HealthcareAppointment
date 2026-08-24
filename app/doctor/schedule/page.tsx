@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Role } from "@prisma/client";
 import { requireServerSession } from "@/lib/serverSession";
 import { prisma } from "@/lib/prisma";
+import { formatTimeRange } from "@/lib/dateTime";
 import { PageHeader, EmptyState } from "@/components/ui/PageHeader";
 import { Card, CardBody } from "@/components/ui/Card";
 import { AppointmentStatusBadge } from "@/components/ui/Badge";
@@ -10,13 +11,6 @@ import { ScheduleDatePicker } from "@/components/doctor/ScheduleDatePicker";
 
 function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10);
-}
-
-function formatTime(start: Date, end: Date): string {
-  return `${start.toLocaleString("en-US", { timeStyle: "short", timeZone: "UTC" })} – ${end.toLocaleString(
-    "en-US",
-    { timeStyle: "short", timeZone: "UTC" }
-  )} UTC`;
 }
 
 export default async function DoctorSchedulePage({
@@ -63,7 +57,7 @@ export default async function DoctorSchedulePage({
                 <CardBody className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="text-sm font-medium text-slate-900">{appt.patient.fullName}</p>
-                    <p className="text-sm text-slate-500">{formatTime(appt.slotStart, appt.slotEnd)}</p>
+                    <p className="text-sm text-slate-500">{formatTimeRange(appt.slotStart, appt.slotEnd)}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     {appt.symptomAnalysis?.urgencyLevel && (

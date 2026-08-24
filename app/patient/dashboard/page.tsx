@@ -3,16 +3,10 @@ import { Role } from "@prisma/client";
 import { requireServerSession } from "@/lib/serverSession";
 import { prisma } from "@/lib/prisma";
 import { getDoctorDisplayName } from "@/lib/doctors";
+import { formatMediumSlotRange } from "@/lib/dateTime";
 import { PageHeader, EmptyState } from "@/components/ui/PageHeader";
 import { Card, CardBody } from "@/components/ui/Card";
 import { AppointmentStatusBadge } from "@/components/ui/Badge";
-
-function formatSlot(start: Date, end: Date): string {
-  return `${start.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" })} – ${end.toLocaleString(
-    "en-US",
-    { timeStyle: "short", timeZone: "UTC" }
-  )} UTC`;
-}
 
 export default async function PatientDashboardPage() {
   const session = requireServerSession([Role.PATIENT]);
@@ -57,7 +51,7 @@ export default async function PatientDashboardPage() {
                     <p className="text-sm font-medium text-slate-900">
                       Dr. {getDoctorDisplayName(appt.doctor)} — {appt.doctor.specialisation}
                     </p>
-                    <p className="text-sm text-slate-500">{formatSlot(appt.slotStart, appt.slotEnd)}</p>
+                    <p className="text-sm text-slate-500">{formatMediumSlotRange(appt.slotStart, appt.slotEnd)}</p>
                   </div>
                   <AppointmentStatusBadge status={appt.status} />
                 </CardBody>
