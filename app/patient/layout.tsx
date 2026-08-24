@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
 const NAV_LINKS = [
   { href: "/patient/dashboard", label: "My appointments" },
   { href: "/patient/doctors", label: "Find a doctor" },
+  { href: "/settings/calendar", label: "Calendar sync" },
 ];
 
 export default async function PatientLayout({ children }: { children: ReactNode }) {

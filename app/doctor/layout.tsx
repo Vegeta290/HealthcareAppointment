@@ -8,7 +8,10 @@ import { PortalShell } from "@/components/nav/PortalShell";
 // applies here.
 export const dynamic = "force-dynamic";
 
-const NAV_LINKS = [{ href: "/doctor/schedule", label: "Today's schedule" }];
+const NAV_LINKS = [
+  { href: "/doctor/schedule", label: "Today's schedule" },
+  { href: "/settings/calendar", label: "Calendar sync" },
+];
 
 export default async function DoctorLayout({ children }: { children: ReactNode }) {
   const session = requireServerSession([Role.DOCTOR]);

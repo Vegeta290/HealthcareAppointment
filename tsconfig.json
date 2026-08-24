@@ -20,5 +20,21 @@
     "plugins": [{ "name": "next" }]
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules"],
+  // Next.js's build uses the top-level compilerOptions above (module: esnext,
+  // moduleResolution: bundler — required by webpack/Next). ts-node (used to run
+  // prisma/seed.ts and workers/*.ts directly under Node) needs a plain CommonJS
+  // module system instead; without this override it silently fails to compile
+  // any file with a package import (module="NodeNext" gets inferred from the
+  // Node version and conflicts with moduleResolution="bundler", which is a
+  // config-level error ts-node does not surface under --transpile-only — it
+  // just produces an empty compiled output, so the script appears to run
+  // successfully while doing nothing).
+  "ts-node": {
+    "transpileOnly": true,
+    "compilerOptions": {
+      "module": "commonjs",
+      "moduleResolution": "node"
+    }
+  }
 }

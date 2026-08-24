@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { AppointmentStatusBadge, UrgencyBadge } from "@/components/ui/Badge";
 import { VisitNoteForm } from "@/components/doctor/VisitNoteForm";
+import { GenerateSummaryButton } from "@/components/doctor/GenerateSummaryButton";
 
 function formatSlot(start: Date, end: Date): string {
   return `${start.toLocaleString("en-US", { dateStyle: "full", timeStyle: "short", timeZone: "UTC" })} – ${end.toLocaleString(
@@ -48,18 +49,22 @@ export default async function DoctorAppointmentDetailPage({ params }: { params: 
         <CardHeader>
           <h2 className="text-sm font-semibold text-slate-900">Pre-visit AI summary</h2>
         </CardHeader>
-        <CardBody>
+        <CardBody className="space-y-4">
           {!appointment.symptomText ? (
             <p className="text-sm text-slate-500">Patient didn&apos;t submit a symptom form before booking.</p>
           ) : !appointment.symptomAnalysis || appointment.symptomAnalysis.status === "PENDING" ? (
             <div className="space-y-2">
-              <p className="text-sm text-slate-500">AI summary is being generated. Raw symptoms reported:</p>
+              <p className="text-sm text-slate-500">
+                {appointment.symptomAnalysis ? "AI summary is being generated." : "No AI summary yet."} Raw
+                symptoms reported:
+              </p>
               <p className="whitespace-pre-wrap text-sm text-slate-700">{appointment.symptomText}</p>
             </div>
           ) : appointment.symptomAnalysis.status === "FAILED" ? (
             <div className="space-y-2">
               <p className="text-sm text-amber-700">
-                Automatic analysis failed. Raw symptoms reported by the patient:
+                Automatic analysis failed{appointment.symptomAnalysis.errorMessage ? ` (${appointment.symptomAnalysis.errorMessage})` : ""}.
+                Raw symptoms reported by the patient:
               </p>
               <p className="whitespace-pre-wrap text-sm text-slate-700">{appointment.symptomText}</p>
             </div>
@@ -90,6 +95,19 @@ export default async function DoctorAppointmentDetailPage({ params }: { params: 
               </details>
             </div>
           )}
+          {appointment.symptomText && (
+            <GenerateSummaryButton
+              appointmentId={appointment.id}
+              type="PRE_VISIT"
+              label={
+                !appointment.symptomAnalysis
+                  ? "Generate AI summary"
+                  : appointment.symptomAnalysis.status === "COMPLETED"
+                    ? "Regenerate AI summary"
+                    : "Retry AI summary"
+              }
+            />
+          )}
         </CardBody>
       </Card>
 
@@ -110,6 +128,21 @@ export default async function DoctorAppointmentDetailPage({ params }: { params: 
                 ))}
               </ul>
             )}
+            <div>
+              <p className="mb-1 text-xs text-slate-500">
+                Patient-friendly summary:{" "}
+                {appointment.visitNote?.status === "COMPLETED"
+                  ? "generated"
+                  : appointment.visitNote?.status === "FAILED"
+                    ? `failed${appointment.visitNote.errorMessage ? ` (${appointment.visitNote.errorMessage})` : ""}`
+                    : "pending"}
+              </p>
+              <GenerateSummaryButton
+                appointmentId={appointment.id}
+                type="POST_VISIT"
+                label={appointment.visitNote?.status === "COMPLETED" ? "Regenerate AI summary" : "Retry AI summary"}
+              />
+            </div>
           </CardBody>
         </Card>
       ) : appointment.status === "CANCELLED" ? (
