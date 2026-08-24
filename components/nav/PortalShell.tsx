@@ -1,6 +1,7 @@
-import Link from "next/link";
 import { ReactNode } from "react";
+import { BrandMark } from "@/components/ui/BrandMark";
 import { LogoutButton } from "./LogoutButton";
+import { PortalNavLinks } from "./PortalNavLinks";
 
 export interface PortalNavLink {
   href: string;
@@ -21,26 +22,26 @@ export function PortalShell({
   userEmail: string;
   children: ReactNode;
 }) {
+  const initial = userEmail.charAt(0).toUpperCase();
+
   return (
     <div className="min-h-screen">
-      <header className="border-b border-slate-200 bg-white">
+      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/80 backdrop-blur-sm">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-6">
-            <span className="text-sm font-semibold text-brand-700">{portalName}</span>
-            <nav className="flex items-center gap-4">
-              {links.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="text-sm text-slate-600 hover:text-brand-700"
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
+            <div className="flex items-center gap-2.5">
+              <BrandMark />
+              <span className="text-sm font-semibold text-slate-900">{portalName}</span>
+            </div>
+            <PortalNavLinks links={links} />
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-slate-500">{userEmail}</span>
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-600">
+                {initial}
+              </span>
+              <span className="hidden text-sm text-slate-500 sm:inline">{userEmail}</span>
+            </div>
             <LogoutButton />
           </div>
         </div>

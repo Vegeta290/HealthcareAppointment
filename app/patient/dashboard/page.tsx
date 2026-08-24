@@ -51,7 +51,7 @@ export default async function PatientDashboardPage() {
         <div className="space-y-3">
           {appointments.map((appt) => (
             <Link key={appt.id} href={`/patient/appointments/${appt.id}`}>
-              <Card className="transition-shadow hover:shadow-md">
+              <Card className="transition-all duration-150 hover:shadow-card-hover hover:-translate-y-0.5">
                 <CardBody className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="text-sm font-medium text-slate-900">
