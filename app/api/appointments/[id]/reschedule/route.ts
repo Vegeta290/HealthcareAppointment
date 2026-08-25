@@ -18,7 +18,7 @@ class AppointmentNotReschedulableError extends Error {}
 // app/api/appointments/hold and .../book — the patient must call
 // POST /api/appointments/hold first to reserve the new slot, then this
 // route). Modeled as cancel-old + create-new rather than mutating slotStart
-// in place, per PLAN.md's design notes — keeps the audit trail and
+// in place — keeps the audit trail and
 // notification history intact, and the new row goes through the exact same
 // partial-unique-index guarantee as a fresh booking.
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {

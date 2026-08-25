@@ -1,5 +1,5 @@
 // Single source of truth for how dates/times are *displayed* across the app.
-// Everything is stored in the database as UTC (see PLAN.md) — this only
+// Everything is stored in the database as UTC — this only
 // controls presentation, converting to India Standard Time for readability.
 // Changing DISPLAY_TIME_ZONE here updates every page that imports from this
 // file, rather than needing to hunt down each ad-hoc formatter.

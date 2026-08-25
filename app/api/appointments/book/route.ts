@@ -18,7 +18,7 @@ class HoldNotAvailableError extends Error {}
 
 // POST /api/appointments/book
 // Converts an active SlotHold into a confirmed Appointment. This is the route that
-// actually enforces double-booking prevention — see PLAN.md §1 and the comment on
+// actually enforces double-booking prevention — see SYSTEM_DESIGN.md and the comment on
 // the Appointment model in schema.prisma.
 export async function POST(request: NextRequest) {
   const auth = requireRole(request, [Role.PATIENT]);

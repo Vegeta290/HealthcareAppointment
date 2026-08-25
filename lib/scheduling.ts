@@ -34,9 +34,10 @@ export async function isDoctorOnLeave(
 // Generates candidate slot start times for one calendar day, honoring the
 // doctor's DoctorWorkingHours, subtracting DoctorLeave, and excluding times
 // already taken by a live Appointment or an ACTIVE SlotHold. Working-hours
-// "HH:mm" strings are treated as UTC to match the rest of the schema (see
-// PLAN.md) — a real clinic deployment would instead store/convert a clinic
-// timezone, which is out of scope here.
+// "HH:mm" strings are treated as UTC to match the rest of the schema — a real
+// clinic deployment would instead store/convert a clinic timezone, which is
+// out of scope here. See README.md's "Display timezone" section for the
+// related known limitation this creates for IST-based working hours.
 export async function generateAvailableSlots(
   db: Db,
   doctorId: string,

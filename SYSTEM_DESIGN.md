@@ -1,7 +1,7 @@
 # System Design Write-Up: Healthcare Appointment & Follow-up Manager
 
 **Submitted for:** Healthcare Appointment & Follow-up Manager — Project Evaluation
-**Author:** [Student Name]
+**Author:** [Abhijeet Sinha]
 **Word count:** ~790
 
 ## 1. Introduction
@@ -94,3 +94,30 @@ event. LLM outputs (`SymptomAnalysis`, `VisitNote`) use the same pattern: a
 never blocks the appointment itself — the UI falls back to the doctor's or patient's raw
 input while the summary is marked `FAILED` and can be retried, satisfying the
 requirement that LLM failures must not break the system.
+
+---
+
+## Addendum: updates after initial submission
+
+The word count above is unchanged from the original submission; this section documents what
+changed afterward, kept separate rather than inflating the graded write-up. Full details in
+`README.md`.
+
+- **Manual LLM retry**: `POST /api/appointments/[id]/regenerate-summary` lets a doctor
+  re-trigger a stuck (`PENDING`, e.g. no worker was running at enqueue time) or `FAILED` LLM job
+  on demand, on top of the automatic triggers described above.
+- **Reschedule**: implemented as originally planned — cancel-old + create-new linked
+  via `rescheduledFromId`, reusing the same `appointment_live_slot_uq` double-booking guard.
+- **Doctor-filed leave**: `POST /api/doctor-leave` already supported a doctor filing leave for
+  themselves (not just an admin filing on their behalf); a `/doctor/leave` page was added so this
+  is reachable from the UI, not just the API.
+- **Persistent workers on a free host**: the background workers (§ "notification and LLM failure
+  handling" above depends on one running continuously) now have a documented, verified deployment
+  path — Render's free tier, worked around via a trivial HTTP health-check endpoint
+  (`workers/keepAliveServer.ts`) since Render's actual free tier doesn't include their
+  persistent-process service type, paired with an external cron pinger to prevent the free tier's
+  15-minute idle sleep.
+- **Real bug found and fixed**: the production Gemini model pinned at design time
+  (`gemini-1.5-flash`) was retired by Google and started returning `404`s under live testing —
+  switched to a currently-available model, with a note in `README.md` on how to find the current
+  one when this happens again (models get deprecated periodically).

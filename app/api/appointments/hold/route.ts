@@ -13,7 +13,7 @@ interface HoldRequestBody {
 
 // POST /api/appointments/hold
 // Reserves a slot for a short window while the patient fills out the symptom form,
-// before the booking is finalised. Advisory, not authoritative — see PLAN.md §1 and
+// before the booking is finalised. Advisory, not authoritative — see SYSTEM_DESIGN.md and
 // the comment on the Appointment model's partial unique index in schema.prisma for
 // why the /book route is the real double-booking guard.
 export async function POST(request: NextRequest) {
